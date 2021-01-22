@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Tenancy\Tests\Framework\Feature\Identification;
 
 use Tenancy\Identification\Events\Identified;
+use Tenancy\Identification\Events\ManuallySetTenant;
 use Tenancy\Identification\Events\NothingIdentified;
 use Tenancy\Identification\Events\Resolved;
 use Tenancy\Identification\Events\Resolving;
@@ -92,13 +93,14 @@ class TenantIdentificationEventsTest extends TestCase
     {
         $this->resolveTenant($this->mockTenant());
 
-        $switched = $resolving = $resolved = $nothingIdentified = $identified = 0;
+        $switched = $resolving = $resolved = $nothingIdentified = $identified = $manuallySet = 0;
 
         $this->expectEvent(Switched::class, $switched);
         $this->expectEvent(Resolving::class, $resolving);
         $this->expectEvent(Resolved::class, $resolved);
         $this->expectEvent(NothingIdentified::class, $nothingIdentified);
         $this->expectEvent(Identified::class, $identified);
+        $this->expectEvent(ManuallySetTenant::class, $manuallySet);
 
         $this->environment->identifyTenant();
         $this->environment->identifyTenant();
@@ -108,6 +110,7 @@ class TenantIdentificationEventsTest extends TestCase
         $this->assertEquals(1, $resolved);
         $this->assertEquals(0, $nothingIdentified);
         $this->assertEquals(1, $identified);
+        $this->assertEquals(0, $manuallySet);
 
         $this->resolveTenant($this->mockTenant());
         $this->environment->identifyTenant(true);
@@ -117,6 +120,23 @@ class TenantIdentificationEventsTest extends TestCase
         $this->assertEquals(2, $resolved);
         $this->assertEquals(0, $nothingIdentified);
         $this->assertEquals(2, $identified);
+        $this->assertEquals(0, $manuallySet);
+
+        $this->environment->setTenant($this->mockTenant());
+        $this->assertEquals(3, $switched);
+        $this->assertEquals(0, $resolving);
+        $this->assertEquals(2, $resolved);
+        $this->assertEquals(0, $nothingIdentified);
+        $this->assertEquals(2, $identified);
+        $this->assertEquals(1, $manuallySet);
+
+        $this->environment->setTenant(null);
+        $this->assertEquals(4, $switched);
+        $this->assertEquals(0, $resolving);
+        $this->assertEquals(2, $resolved);
+        $this->assertEquals(0, $nothingIdentified);
+        $this->assertEquals(2, $identified);
+        $this->assertEquals(2, $manuallySet);
     }
 
     protected function expectEvent(string $event, int &$count)

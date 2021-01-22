@@ -18,6 +18,7 @@ namespace Tenancy;
 
 use Illuminate\Support\Traits\Macroable;
 use Tenancy\Identification\Contracts\Tenant;
+use Tenancy\Identification\Events\ManuallySetTenant;
 use Tenancy\Identification\Events\Switched;
 
 class Environment
@@ -38,9 +39,13 @@ class Environment
      */
     protected $identified = false;
 
-    public function setTenant(Tenant $tenant = null)
+    public function setTenant(Tenant $tenant = null, bool $manualSet = true)
     {
         $this->tenant = $tenant;
+
+        if ($manualSet) {
+            $this->events()->dispatch(new ManuallySetTenant($tenant));
+        }
 
         $this->events()->dispatch(new Switched($tenant));
 
@@ -61,7 +66,7 @@ class Environment
         if (!$this->identified || $refresh) {
             $resolver = $this->tenantResolver();
 
-            $this->setTenant($resolver($contract));
+            $this->setTenant($resolver($contract), false);
         }
 
         return $this->getTenant();
